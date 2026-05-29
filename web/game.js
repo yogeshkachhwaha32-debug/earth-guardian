@@ -182,7 +182,7 @@
   // ----------------------------------------------------------------- gestures
   // No boss / no strike. Four powers, each restorative.
   //   Open Palm   → Rain Power     (also disperses smoke)
-  //   Both Hands Up → Forest Power (trees grow on the surface)
+  //   One Finger    → Forest Power (trees grow on the surface)
   //   Swipe Left  → Wind Blast     (clears smog, shows CARBON EMISSION · ZERO)
   //   Fist        → Crop / Warm    (golden fields bloom, big heal)
   const NICE = { rain: "RAIN", forest: "FOREST", wind: "WIND", attack: "CROP" };
@@ -762,7 +762,7 @@
   }
 
   // ----------------------------------------------------------------- gesture indicator
-  const GX_ICON = { rain: "🖐️", forest: "🙌", wind: "✌️", attack: "✊" };
+  const GX_ICON = { rain: "🖐️", forest: "☝️", wind: "✌️", attack: "✊" };
   const GX_NAME = { rain: "RAIN POWER", forest: "FOREST GROWTH", wind: "WIND BLAST · CARBON ZERO", attack: "CROP / WARM POWER" };
   let gxFade = null;
   function updateGestureIndicator(g, conf) {
@@ -772,6 +772,11 @@
     const pct = Math.round(clamp(conf, 0, 1) * 100);
     $("gx-conf").style.width = pct + "%";
     $("gx-conf-num").textContent = pct + "%";
+    if (!g) {
+      wrap.classList.remove("active");
+      clearTimeout(gxFade);
+      return;
+    }
     wrap.classList.remove("active"); void wrap.offsetWidth;
     wrap.classList.add("active");
     clearTimeout(gxFade);
@@ -1029,21 +1034,31 @@
     let stableGesture = null;
     let stableFrames = 0;
     let lastEmit = 0;
+    let emittedForHold = false;
 
     hands.onResults((res) => {
-      const gesture = classifyBrowserGesture(res.multiHandLandmarks || []);
-      if (gesture && gesture === stableGesture) stableFrames++;
-      else {
-        stableGesture = gesture;
-        stableFrames = gesture ? 1 : 0;
+      const gesture = classifyBrowserGesture(res.multiHandLandmarks || [], res.multiHandedness || []);
+      if (!gesture) {
+        stableGesture = null;
+        stableFrames = 0;
+        emittedForHold = false;
+        updateGestureIndicator(null, 0);
+        return;
       }
 
-      if (!gesture) return;
+      if (gesture === stableGesture) stableFrames++;
+      else {
+        stableGesture = gesture;
+        stableFrames = 1;
+        emittedForHold = false;
+      }
+
       updateGestureIndicator(gesture, Math.min(0.99, 0.62 + stableFrames * 0.04));
 
       const now = performance.now();
-      if (stableFrames >= 8 && now - lastEmit > 1300) {
+      if (!emittedForHold && stableFrames >= 10 && now - lastEmit > 900) {
         lastEmit = now;
+        emittedForHold = true;
         applyGesture(gesture, 0.92);
       }
     });
@@ -1068,11 +1083,17 @@
       });
   }
 
-  function classifyBrowserGesture(hands) {
+  function classifyBrowserGesture(hands, handedness = []) {
     if (!hands.length) return null;
-    const states = hands.map(fingerState);
+    const states = hands
+      .map((lm, i) => {
+        const score = handedness[i] && typeof handedness[i].score === "number" ? handedness[i].score : 1;
+        return score >= 0.8 ? fingerState(lm) : null;
+      })
+      .filter(Boolean);
+    if (!states.length) return null;
 
-    if (states.length >= 2 && states.every((s) => s.openPalm)) return "forest";
+    if (states.some((s) => s.oneFinger)) return "forest";
     if (states.some((s) => s.openPalm)) return "rain";
     if (states.some((s) => s.twoFingers)) return "wind";
     if (states.some((s) => s.fist)) return "attack";
@@ -1080,6 +1101,16 @@
   }
 
   function fingerState(lm) {
+    const xs = lm.map((p) => p.x);
+    const ys = lm.map((p) => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const width = maxX - minX;
+    const height = maxY - minY;
+    const size = Math.max(width, height);
+    if (size < 0.16 || size > 0.95) return null;
+    if (minX < -0.08 || maxX > 1.08 || minY < -0.08 || maxY > 1.08) return null;
+
     const extended = (tip, pip) => lm[tip].y < lm[pip].y - 0.025;
     const index = extended(8, 6);
     const middle = extended(12, 10);
@@ -1087,6 +1118,7 @@
     const pinky = extended(20, 18);
 
     return {
+      oneFinger: index && !middle && !ring && !pinky,
       openPalm: index && middle && ring && pinky,
       twoFingers: index && middle && !ring && !pinky,
       fist: !index && !middle && !ring && !pinky,
