@@ -961,9 +961,11 @@
     renderLeaderboard();
   }
 
-  // ----------------------------------------------------------------- connection (Python gesture server)
-  let ws = null, retryTimer = null, camSet = false;
+  // ----------------------------------------------------------------- connection / browser gesture engine
+  let ws = null, retryTimer = null, camSet = false, browserCam = null;
   const GESTURE_PORT = 8765;
+  const isLocalHost = /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/i.test(location.hostname);
+  const useBrowserGestures = location.protocol === "https:" && !isLocalHost;
 
   function connectWS() {
     const host = location.hostname || "127.0.0.1";
@@ -1005,6 +1007,92 @@
     }
   }
 
+  function startBrowserGestureEngine() {
+    const video = $("cam-video");
+    const lab = $("cam-label");
+    if (!video || typeof Hands === "undefined" || typeof Camera === "undefined") {
+      setConn(false, "gesture library failed");
+      setCam(false);
+      return;
+    }
+
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+    });
+    hands.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.65,
+      minTrackingConfidence: 0.55,
+    });
+
+    let stableGesture = null;
+    let stableFrames = 0;
+    let lastEmit = 0;
+
+    hands.onResults((res) => {
+      const gesture = classifyBrowserGesture(res.multiHandLandmarks || []);
+      if (gesture && gesture === stableGesture) stableFrames++;
+      else {
+        stableGesture = gesture;
+        stableFrames = gesture ? 1 : 0;
+      }
+
+      if (!gesture) return;
+      updateGestureIndicator(gesture, Math.min(0.99, 0.62 + stableFrames * 0.04));
+
+      const now = performance.now();
+      if (stableFrames >= 8 && now - lastEmit > 1300) {
+        lastEmit = now;
+        applyGesture(gesture, 0.92);
+      }
+    });
+
+    browserCam = new Camera(video, {
+      width: 320,
+      height: 240,
+      onFrame: async () => hands.send({ image: video }),
+    });
+
+    browserCam.start()
+      .then(() => {
+        setConn(true, "browser camera online");
+        video.style.display = "block";
+        lab.textContent = "● LIVE · YOUR HANDS";
+        lab.style.color = "var(--green)";
+      })
+      .catch((err) => {
+        console.error("[Gaia] Browser camera failed:", err);
+        setConn(false, "camera permission needed");
+        setCam(false);
+      });
+  }
+
+  function classifyBrowserGesture(hands) {
+    if (!hands.length) return null;
+    const states = hands.map(fingerState);
+
+    if (states.length >= 2 && states.every((s) => s.openPalm)) return "forest";
+    if (states.some((s) => s.openPalm)) return "rain";
+    if (states.some((s) => s.twoFingers)) return "wind";
+    if (states.some((s) => s.fist)) return "attack";
+    return null;
+  }
+
+  function fingerState(lm) {
+    const extended = (tip, pip) => lm[tip].y < lm[pip].y - 0.025;
+    const index = extended(8, 6);
+    const middle = extended(12, 10);
+    const ring = extended(16, 14);
+    const pinky = extended(20, 18);
+
+    return {
+      openPalm: index && middle && ring && pinky,
+      twoFingers: index && middle && !ring && !pinky,
+      fist: !index && !middle && !ring && !pinky,
+    };
+  }
+
   // ----------------------------------------------------------------- input
   $("start-btn").addEventListener("click", beginGame);
   $("restart-btn").addEventListener("click", () => {
@@ -1040,5 +1128,6 @@
   }
   requestAnimationFrame(frame);
 
-  connectWS();
+  if (useBrowserGestures) startBrowserGestureEngine();
+  else connectWS();
 })();

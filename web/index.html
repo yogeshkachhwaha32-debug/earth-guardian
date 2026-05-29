@@ -58,6 +58,7 @@
     <!-- Live webcam preview -->
     <div id="cam" class="cam">
       <img id="cam-img" alt="" />
+      <video id="cam-video" autoplay playsinline muted></video>
       <div id="cam-label" class="cam-label">● LIVE · YOUR HANDS</div>
     </div>
 
@@ -158,6 +159,8 @@
   </footer>
 
   <script src="audio.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="game.js"></script>
 </body>
 </html>

@@ -230,7 +230,15 @@ html, body {
   background: #000;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
 }
-.cam img { width: 100%; display: block; min-height: 70px; background: #04121a; }
+.cam img,
+.cam video {
+  width: 100%;
+  display: block;
+  min-height: 70px;
+  background: #04121a;
+}
+.cam img { display: none; }
+.cam video { transform: scaleX(-1); }
 .cam-label {
   position: absolute;
   top: 6px; left: 8px;
