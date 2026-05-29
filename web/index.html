@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EARTH GUARDIAN</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Cinematic scene -->
+  <canvas id="scene"></canvas>
+
+  <!-- Heads-up display -->
+  <div id="hud" class="hidden">
+    <!-- Connection indicator (top right corner of screen) -->
+    <div id="conn" class="conn">
+      <span id="conn-dot" class="dot off"></span>
+      <span id="conn-text">connecting…</span>
+    </div>
+
+    <!-- Top: Earth vitality -->
+    <div class="top-bar">
+      <div class="earth-health">
+        <div class="label">EARTH VITALITY · <span id="earth-state">CRITICAL</span></div>
+        <div class="bar">
+          <div id="earth-health-fill" class="fill"></div>
+          <div id="earth-health-num" class="num">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Carbon emission telemetry -->
+    <div id="carbon" class="carbon danger">
+      <div class="carbon-label">CARBON EMISSION</div>
+      <div class="carbon-num" id="carbon-num">480 ppm</div>
+    </div>
+
+    <!-- Gesture legend -->
+    <div id="legend" class="legend">
+      <div class="card" data-g="rain">
+        <div class="icon">🖐️</div>
+        <div class="info"><div class="g-name">OPEN PALM</div><div class="g-eff">Summon Rain · Clear Smog</div></div>
+      </div>
+      <div class="card" data-g="forest">
+        <div class="icon">🙌</div>
+        <div class="info"><div class="g-name">BOTH HANDS UP</div><div class="g-eff">Grow Forests</div></div>
+      </div>
+      <div class="card" data-g="wind">
+        <div class="icon">✌️</div>
+        <div class="info"><div class="g-name">TWO FINGERS</div><div class="g-eff">Wind Blast · Carbon Zero</div></div>
+      </div>
+      <div class="card" data-g="attack">
+        <div class="icon">✊</div>
+        <div class="info"><div class="g-name">FIST</div><div class="g-eff">Crop · Warm the Earth</div></div>
+      </div>
+    </div>
+
+    <!-- Live webcam preview -->
+    <div id="cam" class="cam">
+      <img id="cam-img" alt="" />
+      <div id="cam-label" class="cam-label">● LIVE · YOUR HANDS</div>
+    </div>
+
+    <!-- Real-time gesture indicator (holographic) -->
+    <div id="gx" class="gx">
+      <div class="gx-frame">
+        <div class="gx-corner tl"></div><div class="gx-corner tr"></div>
+        <div class="gx-corner bl"></div><div class="gx-corner br"></div>
+        <div class="gx-kicker">ACTIVE POWER</div>
+        <div class="gx-icon" id="gx-icon">·</div>
+        <div class="gx-name" id="gx-name">AWAITING GESTURE</div>
+        <div class="gx-bar"><div id="gx-conf" class="gx-bar-fill"></div></div>
+        <div class="gx-meta"><span id="gx-conf-num">0%</span></div>
+      </div>
+    </div>
+
+    <!-- Big gesture flash -->
+    <div id="flash" class="flash"></div>
+
+    <!-- Narration line -->
+    <div id="narration" class="narration"></div>
+
+    <!-- Speaking indicator (shown while AI voice is talking) -->
+    <div id="speak-ind" class="speak-ind">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="lbl">BHUMI · narrating</span>
+    </div>
+  </div>
+
+  <!-- Start overlay -->
+  <div id="start" class="overlay">
+    <div class="overlay-inner">
+      <div class="subtitle">OBLIQ AI EDUCATIONAL FOUNDATION</div>
+      <div class="kicker">AN AI ENVIRONMENTAL EXPERIENCE</div>
+      <h1 class="title-kinetic" aria-label="EARTH GUARDIAN">
+        <span class="ltr">E</span><span class="ltr">A</span><span class="ltr">R</span><span class="ltr">T</span><span class="ltr">H</span>
+        <span class="gap"></span>
+        <span class="ltr">G</span><span class="ltr">U</span><span class="ltr">A</span><span class="ltr">R</span><span class="ltr">D</span><span class="ltr">I</span><span class="ltr">A</span><span class="ltr">N</span>
+      </h1>
+      <p class="tag">A world is dying. With your bare hands, bring it back to life.</p>
+      <button id="start-btn" class="btn">▶ &nbsp;BEGIN</button>
+      <p class="hint">
+        Stand in view of your webcam and use gestures to control nature.<br />
+        <span class="dim">No camera? Keys <b>1</b> Rain · <b>2</b> Forest · <b>3</b> Wind · <b>4</b> Crop</span><br/>
+        <span class="dim">Tip · Turn your sound on — the Guardian AI will speak to you.</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Calibration overlay (briefly shown between Begin click and gameplay) -->
+  <div id="calibrate" class="overlay calibrate hidden">
+    <div class="overlay-inner">
+      <div class="kicker">CALIBRATING</div>
+      <div class="calib-rings">
+        <span class="ring r1"></span>
+        <span class="ring r2"></span>
+        <span class="ring r3"></span>
+        <div class="calib-center">GAIA</div>
+      </div>
+      <p class="tag" id="calib-msg">Linking to environmental sensors…</p>
+    </div>
+  </div>
+
+  <!-- Ending overlay -->
+  <div id="ending" class="overlay hidden">
+    <div class="overlay-inner">
+      <h1 id="ending-title">EARTH RESTORED</h1>
+      <p id="ending-sub" class="tag"></p>
+      <div id="score" class="score"></div>
+
+      <div id="name-row" class="name-row">
+        <label for="name-input">GUARDIAN NAME</label>
+        <input id="name-input" type="text" maxlength="14" placeholder="ENTER NAME" autocomplete="off" />
+        <button id="save-score-btn" class="btn small">SAVE</button>
+      </div>
+
+      <div id="leaderboard" class="leaderboard">
+        <div class="lb-title">◆ HALL OF GUARDIANS ◆</div>
+        <ol id="lb-list"></ol>
+      </div>
+
+      <button id="restart-btn" class="btn">↻ &nbsp;PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <!-- Nature animations overlay (appears over canvas) -->
+  <div id="nature-overlay" class="nature-overlay hidden">
+    <div class="birds-sky" id="birds-sky"></div>
+  </div>
+
+  <!-- Cinematic grade overlays -->
+  <div class="vignette"></div>
+  <div class="grain"></div>
+
+  <!-- Footer -->
+  <footer id="footer" class="footer">
+    <div class="footer-content">Digital Hammerr</div>
+  </footer>
+
+  <script src="audio.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

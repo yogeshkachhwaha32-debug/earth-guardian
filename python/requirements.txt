@@ -1,0 +1,11 @@
+# Earth Guardian AI — Python gesture + WebSocket layer
+# Verified working together on Windows 11 / Python 3.12.10 (May 2026):
+#   mediapipe 0.10.35, opencv 4.13, numpy 2.4.6, websockets 16.0, protobuf 7.35.
+# NOTE: the legacy mp.solutions.hands API is REMOVED in 0.10.35 — this project
+# uses the modern Tasks API (HandLandmarker). Older "numpy<2 / protobuf<5" pins
+# do NOT apply to 0.10.35 and are intentionally omitted.
+
+mediapipe>=0.10.35
+opencv-contrib-python>=4.10   # one OpenCV distro only (mediapipe's own dep); provides cv2 + cv2.imshow
+numpy>=1.26
+websockets>=14                # need the modern websockets.asyncio API (server + client)
